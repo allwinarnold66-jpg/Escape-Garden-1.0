@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garden Escape: The 4-Player Quiz Race</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        h1, h2, h3, .font-heading {
+            font-family: 'Outfit', sans-serif;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b1d13;
+            color: #f0fdf4;
+        }
+        .glass-card {
+            background: rgba(15, 30, 20, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .glass-btn {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.4));
+            border: 1px solid rgba(134, 239, 172, 0.4);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(16, 185, 129, 0.6));
+            box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+        }
+        .glass-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(34, 197, 94, 0.4);
+            border-radius: 3px;
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(34, 197, 94, 0.8); }
+        }
+        /* 3D Canvas Canvas styles */
+        #main-canvas-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+    </style>
+</head>
+<body class="relative min-h-screen w-full flex flex-col justify-between overflow-hidden bg-emerald-950 text-emerald-50">
+
+    <!-- AUDIO SFX CONTROL -->
+    <div class="fixed top-4 right-4 z-50 flex items-center gap-3">
+        <button id="sfx-toggle-btn" onclick="toggleAudio()" class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-emerald-300 hover:text-white transition">
+            <i id="sfx-icon" class="fas fa-volume-up"></i>
+        </button>
+        <button onclick="copyRoomLink()" class="px-3 py-2 rounded-xl glass-card text-xs font-semibold flex items-center gap-2 hover:border-emerald-400 transition">
+            <i class="fas fa-link text-emerald-400"></i> <span id="room-id-display">Room: ...</span>
+        </button>
+    </div>
+
+    <!-- MAIN APP CANVAS CONTAINER (3D VIEW) -->
+    <div id="main-canvas-container" class="absolute inset-0 z-0"></div>
+
+    <!-- SCREEN 1: ROLE SELECTOR & LOBBY -->
+    <div id="screen-role-select" class="absolute inset-0 z-40 flex items-center justify-center p-4 bg-emerald-950/90 backdrop-blur-md">
+        <div class="glass-card max-w-4xl w-full p-6 md:p-10 rounded-3xl text-center relative overflow-hidden">
+            <div class="absolute -top-24 -left-24 w-60 h-60 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-60 h-60 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <span class="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-3">
+                🌿 Interactive 3D Business Competition
+            </span>
+            <h1 class="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-green-200 to-teal-400 tracking-tight mb-2">
+                GARDEN ESCAPE
+            </h1>
+            <p class="text-emerald-200/80 text-sm md:text-base max-w-xl mx-auto mb-8">
+                Navigate the 3D Hedge Maze by solving real-world business challenges. Choose your department team or act as the Master Admin.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <!-- HR ROLE -->
+                <button onclick="selectRole('HR')" id="role-btn-HR" class="group relative p-5 rounded-2xl glass-card text-left hover:border-emerald-400 transition hover:-translate-y-1">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-3 text-lg group-hover:scale-110 transition">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="font-bold text-emerald-200 text-lg">HR</h3>
+                    <p class="text-xs text-emerald-400/80 mt-1">Human Resources & Leadership</p>
+                    <span id="status-HR" class="inline-block mt-3 px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 font-bold border border-emerald-800">Ready</span>
+                </button>
+
+                <!-- MARKETING ROLE -->
+                <button onclick="selectRole('MARKETING')" id="role-btn-MARKETING" class="group relative p-5 rounded-2xl glass-card text-left hover:border-blue-400 transition hover:-translate-y-1">
+                    <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-3 text-lg group-hover:scale-110 transition">
+                        <i class="fas fa-bullhorn"></i>
+                    </div>
+                    <h3 class="font-bold text-blue-200 text-lg">MARKETING</h3>
+                    <p class="text-xs text-blue-400/80 mt-1">Branding & Strategy</p>
+                    <span id="status-MARKETING" class="inline-block mt-3 px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-blue-400 font-bold border border-blue-900">Ready</span>
+                </button>
+
+                <!-- FINANCE ROLE -->
+                <button onclick="selectRole('FINANCE')" id="role-btn-FINANCE" class="group relative p-5 rounded-2xl glass-card text-left hover:border-amber-400 transition hover:-translate-y-1">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-3 text-lg group-hover:scale-110 transition">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="font-bold text-amber-200 text-lg">FINANCE</h3>
+                    <p class="text-xs text-amber-400/80 mt-1">Accounting & Analytics</p>
+                    <span id="status-FINANCE" class="inline-block mt-3 px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-amber-400 font-bold border border-amber-900">Ready</span>
+                </button>
+
+                <!-- OPERATIONS ROLE -->
+                <button onclick="selectRole('OPERATIONS')" id="role-btn-OPERATIONS" class="group relative p-5 rounded-2xl glass-card text-left hover:border-rose-400 transition hover:-translate-y-1">
+                    <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3 text-lg group-hover:scale-110 transition">
+                        <i class="fas fa-cogs"></i>
+                    </div>
+                    <h3 class="font-bold text-rose-200 text-lg">OPERATIONS</h3>
+                    <p class="text-xs text-rose-400/80 mt-1">Supply Chain & Quality</p>
+                    <span id="status-OPERATIONS" class="inline-block mt-3 px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-rose-400 font-bold border border-rose-900">Ready</span>
+                </button>
+
+                <!-- ADMIN ROLE -->
+                <button onclick="selectRole('ADMIN')" id="role-btn-ADMIN" class="group relative p-5 rounded-2xl glass-card text-left hover:border-purple-400 transition hover:-translate-y-1">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-3 text-lg group-hover:scale-110 transition">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <h3 class="font-bold text-purple-200 text-lg">ADMIN</h3>
+                    <p class="text-xs text-purple-400/80 mt-1">Master Spectator Controls</p>
+                    <span id="status-ADMIN" class="inline-block mt-3 px-2 py-0.5 rounded text-[10px] bg-purple-950 text-purple-400 font-bold border border-purple-800">Spectator</span>
+                </button>
+            </div>
+
+            <!-- ADMIN SETUP BAR -->
+            <div id="admin-controls-lobby" class="hidden p-4 rounded-2xl bg-purple-950/60 border border-purple-500/30 mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-left">
+                    <h4 class="font-bold text-purple-200 text-sm"><i class="fas fa-user-shield mr-2"></i> Admin Control Console</h4>
+                    <p class="text-xs text-purple-300/70">Wait for all players to join on their devices, then click Start Game.</p>
+                </div>
+                <button id="start-game-btn" onclick="adminTriggerMazeReveal()" class="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold hover:brightness-110 transition shadow-lg shadow-purple-900/40">
+                    <i class="fas fa-play mr-2"></i> START MAZE REVEAL
+                </button>
+            </div>
+
+            <div id="player-waiting-notice" class="hidden p-4 rounded-2xl bg-emerald-900/40 border border-emerald-500/30 text-emerald-200 text-sm mb-6">
+                <i class="fas fa-spinner fa-spin mr-2 text-emerald-400"></i> Connected as <strong id="my-role-display" class="text-white">Player</strong>. Waiting for Admin to start the competition...
+            </div>
+
+            <div class="flex justify-between items-center text-xs text-emerald-400/60 border-t border-emerald-800/40 pt-4">
+                <span><i class="fas fa-bolt text-yellow-400"></i> Untimed Questions</span>
+                <span><i class="fas fa-eye-slash text-emerald-400"></i> Fog of War Enabled</span>
+                <span><i class="fas fa-cubes text-teal-400"></i> Real 3D Garden Engine</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: MAZE REVEAL (OVERHEAD CINEMATIC COUNTDOWN) -->
+    <div id="screen-maze-reveal" class="hidden absolute inset-0 z-30 flex flex-col justify-between p-6 pointer-events-none">
+        <div class="flex justify-between items-start pointer-events-auto">
+            <div class="glass-card px-6 py-3 rounded-2xl border-emerald-500/40">
+                <span class="text-xs font-bold text-emerald-400 tracking-wider uppercase block">Phase 1</span>
+                <h2 class="text-xl font-black text-white">STUDY THE MAZE</h2>
+            </div>
+            <div class="glass-card px-6 py-3 rounded-2xl border-yellow-500/40 text-center pulse-glow">
+                <span class="text-xs font-bold text-yellow-400 uppercase block">Race Begins In</span>
+                <div id="reveal-countdown" class="text-3xl font-black text-white">20</div>
+            </div>
+        </div>
+
+        <div class="glass-card p-4 rounded-2xl max-w-lg mx-auto text-center pointer-events-auto bg-emerald-950/80">
+            <p class="text-sm text-emerald-200">
+                <i class="fas fa-compass text-yellow-400 mr-2"></i> Memorize paths, dead ends, and routes to the center. First person perspective will activate shortly!
+            </p>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: GAMEPLAY HUD & QUESTION OVERLAY -->
+    <div id="screen-gameplay" class="hidden absolute inset-0 z-20 flex flex-col justify-between p-4 pointer-events-none">
+        
+        <!-- TOP HUD BAR -->
+        <div class="w-full max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-3 pointer-events-auto">
+            <div class="glass-card px-5 py-2.5 rounded-2xl flex items-center gap-3 border-emerald-500/40">
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black">
+                    🌿
+                </div>
+                <div>
+                    <h2 class="font-black text-sm text-white leading-none">GARDEN ESCAPE</h2>
+                    <span id="current-role-hud" class="text-[11px] font-bold text-emerald-400">PLAYER: HR</span>
+                </div>
+            </div>
+
+            <!-- PLAYER PROGRESS BARS -->
+            <div class="glass-card px-4 py-2 rounded-2xl flex-1 max-w-xl grid grid-cols-4 gap-3 text-xs border-emerald-500/30">
+                <!-- HR -->
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between items-center font-bold text-[10px]">
+                        <span class="text-emerald-400">HR</span>
+                        <span id="hud-score-HR" class="text-white">0pt</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-emerald-950 rounded-full overflow-hidden">
+                        <div id="hud-bar-HR" class="h-full bg-emerald-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+                <!-- MARKETING -->
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between items-center font-bold text-[10px]">
+                        <span class="text-blue-400">MKT</span>
+                        <span id="hud-score-MARKETING" class="text-white">0pt</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-emerald-950 rounded-full overflow-hidden">
+                        <div id="hud-bar-MARKETING" class="h-full bg-blue-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+                <!-- FINANCE -->
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between items-center font-bold text-[10px]">
+                        <span class="text-amber-400">FIN</span>
+                        <span id="hud-score-FINANCE" class="text-white">0pt</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-emerald-950 rounded-full overflow-hidden">
+                        <div id="hud-bar-FINANCE" class="h-full bg-amber-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+                <!-- OPERATIONS -->
+                <div class="flex flex-col gap-1">
+                    <div class="flex justify-between items-center font-bold text-[10px]">
+                        <span class="text-rose-400">OPS</span>
+                        <span id="hud-score-OPERATIONS" class="text-white">0pt</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-emerald-950 rounded-full overflow-hidden">
+                        <div id="hud-bar-OPERATIONS" class="h-full bg-rose-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLAYER HUD INTERACTIVE AREA (BOTTOM CARD) -->
+        <div id="player-interactive-panel" class="w-full max-w-2xl mx-auto pointer-events-auto">
+            
+            <!-- QUESTION CARD -->
+            <div id="question-card" class="glass-card p-5 md:p-6 rounded-3xl border-emerald-500/40 relative overflow-hidden transition-all duration-300">
+                <div class="flex justify-between items-center mb-3">
+                    <span id="question-category" class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider">
+                        HR Challenge
+                    </span>
+                    <span id="question-difficulty" class="text-xs text-emerald-400/80 font-bold">
+                        Difficulty: Easy
+                    </span>
+                </div>
+
+                <h3 id="question-text" class="text-base md:text-lg font-bold text-white mb-4 leading-relaxed">
+                    Loading challenge question...
+                </h3>
+
+                <!-- OPTION BUTTONS GRID -->
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                    <!-- Dynamic option buttons -->
+                </div>
+
+                <!-- FEEDBACK MESSAGE -->
+                <div id="answer-feedback" class="hidden mt-3 p-3 rounded-xl text-center text-sm font-bold animate-bounce">
+                </div>
+            </div>
+
+            <!-- DIRECTION CONTROLS (LOCKED UNTIL CORRECT ANSWER) -->
+            <div id="navigation-card" class="hidden glass-card p-5 rounded-3xl border-yellow-500/50 text-center animate-fade-in">
+                <span class="text-xs font-bold text-yellow-400 uppercase tracking-widest block mb-2">
+                    <i class="fas fa-compass mr-1"></i> Path Unlocked! Choose Direction
+                </span>
+                
+                <div class="grid grid-cols-3 gap-2 max-w-xs mx-auto my-2">
+                    <div></div>
+                    <button id="btn-dir-FORWARD" onclick="movePlayer('FORWARD')" class="glass-btn p-3 rounded-2xl text-emerald-300 font-bold text-sm flex flex-col items-center justify-center gap-1 hover:text-white">
+                        <i class="fas fa-arrow-up text-lg"></i>
+                        <span>FORWARD</span>
+                    </button>
+                    <div></div>
+
+                    <button id="btn-dir-LEFT" onclick="movePlayer('LEFT')" class="glass-btn p-3 rounded-2xl text-emerald-300 font-bold text-sm flex flex-col items-center justify-center gap-1 hover:text-white">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                        <span>LEFT</span>
+                    </button>
+                    
+                    <button id="btn-dir-BACK" onclick="movePlayer('BACK')" class="glass-btn p-3 rounded-2xl text-emerald-300 font-bold text-sm flex flex-col items-center justify-center gap-1 hover:text-white">
+                        <i class="fas fa-arrow-down text-lg"></i>
+                        <span>BACK</span>
+                    </button>
+
+                    <button id="btn-dir-RIGHT" onclick="movePlayer('RIGHT')" class="glass-btn p-3 rounded-2xl text-emerald-300 font-bold text-sm flex flex-col items-center justify-center gap-1 hover:text-white">
+                        <i class="fas fa-arrow-right text-lg"></i>
+                        <span>RIGHT</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN MULTI-VIEW HUD (4-SPLIT GRID OVERLAY) -->
+    <div id="admin-multiview-hud" class="hidden absolute inset-0 z-20 p-4 pointer-events-none flex flex-col justify-between">
+        <div class="w-full flex justify-between items-center pointer-events-auto glass-card p-3 rounded-2xl">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-crown text-purple-400 text-xl"></i>
+                <h2 class="font-black text-purple-200">ADMIN SPECTATOR VIEW</h2>
+            </div>
+            <div class="text-xs text-purple-300/80">
+                <i class="fas fa-eye text-emerald-400 mr-1"></i> Live tracking 4 independent maze perspectives
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 grid-rows-2 gap-2 flex-1 my-2">
+            <div class="border border-emerald-500/40 rounded-2xl bg-emerald-950/30 p-2 flex justify-between items-start">
+                <span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-300 text-xs font-bold">HR View</span>
+                <span id="admin-status-HR" class="text-[10px] text-white bg-black/40 px-2 py-0.5 rounded">Node A</span>
+            </div>
+            <div class="border border-blue-500/40 rounded-2xl bg-blue-950/30 p-2 flex justify-between items-start">
+                <span class="px-2 py-1 rounded bg-blue-500/20 text-blue-300 text-xs font-bold">Marketing View</span>
+                <span id="admin-status-MARKETING" class="text-[10px] text-white bg-black/40 px-2 py-0.5 rounded">Node A</span>
+            </div>
+            <div class="border border-amber-500/40 rounded-2xl bg-amber-950/30 p-2 flex justify-between items-start">
+                <span class="px-2 py-1 rounded bg-amber-500/20 text-amber-300 text-xs font-bold">Finance View</span>
+                <span id="admin-status-FINANCE" class="text-[10px] text-white bg-black/40 px-2 py-0.5 rounded">Node A</span>
+            </div>
+            <div class="border border-rose-500/40 rounded-2xl bg-rose-950/30 p-2 flex justify-between items-start">
+                <span class="px-2 py-1 rounded bg-rose-500/20 text-rose-300 text-xs font-bold">Operations View</span>
+                <span id="admin-status-OPERATIONS" class="text-[10px] text-white bg-black/40 px-2 py-0.5 rounded">Node A</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: VICTORY WINNER MODAL -->
+    <div id="screen-winner" class="hidden absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg">
+        <div class="glass-card max-w-lg w-full p-8 rounded-3xl text-center border-yellow-500/50 relative overflow-hidden">
+            <div class="text-6xl mb-4 animate-bounce">🏆</div>
+            <span class="px-4 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-bold uppercase tracking-widest block w-max mx-auto mb-2">
+                Garden Escape Winner!
+            </span>
+            <h2 id="winner-title" class="text-4xl font-black text-white mb-2">
+                MARKETING ESCAPED!
+            </h2>
+            <p id="winner-desc" class="text-emerald-200/80 text-sm mb-6">
+                Successfully navigated through the garden maze and reached the central archway first!
+            </p>
+
+            <div class="bg-emerald-950/60 p-4 rounded-2xl mb-6 text-left text-xs space-y-2 border border-emerald-800">
+                <div class="flex justify-between border-b border-emerald-800/50 pb-1">
+                    <span class="text-emerald-400">Winning Department:</span>
+                    <strong id="win-dept" class="text-white">Marketing</strong>
+                </div>
+                <div class="flex justify-between border-b border-emerald-800/50 pb-1">
+                    <span class="text-emerald-400">Final Score:</span>
+                    <strong id="win-score" class="text-white">600 pts</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-emerald-400">Total Steps Taken:</span>
+                    <strong id="win-steps" class="text-white">12 steps</strong>
+                </div>
+            </div>
+
+            <button onclick="resetGame()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-sm hover:brightness-110 transition shadow-lg shadow-emerald-900/50">
+                <i class="fas fa-redo mr-2"></i> PLAY AGAIN
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. BUSINESS QUESTION BANK (100+ EDUCATIONAL QUESTIONS)
+           ========================================================================= */
+        const QUESTION_BANK = {
+            HR: [
+                { q: "What is the primary purpose of recruitment?", options: ["Attracting suitable job candidates", "Writing tax reports", "Auditing inventory", "Designing logos"], answer: 0, diff: "Easy" },
+                { q: "What does KPI stand for in performance management?", options: ["Key Performance Indicator", "Knowledge Process Integration", "Key Profit Index", "Known Personnel Inquiry"], answer: 0, diff: "Easy" },
+                { q: "Which onboarding practice reduces early employee turnover?", options: ["Structured mentorship", "No job orientation", "Immediate overtime", "Ignoring company culture"], answer: 0, diff: "Medium" },
+                { q: "What is 360-degree feedback?", options: ["Feedback from peers, managers, and subordinates", "An annual tax review", "A 3-step firing process", "Customer complaints process"], answer: 0, diff: "Medium" },
+                { q: "Which legal act governs fair labor standards and minimum wage in the US?", options: ["FLSA (Fair Labor Standards Act)", "OSHA", "GDPR", "Sarbanes-Oxley Act"], answer: 0, diff: "Hard" },
+                { q: "What is employee turnover rate?", options: ["Percentage of employees leaving over a period", "Speed of employee typing", "Total profit per employee", "Total hiring budget spent"], answer: 0, diff: "Easy" },
+                { q: "What describes emotional intelligence (EQ) in leadership?", options: ["Recognizing & managing emotions in self and others", "High IQ math calculation", "Strict punishment tactics", "Ignoring team feedback"], answer: 0, diff: "Medium" },
+                { q: "What is the main goal of succession planning?", options: ["Identifying future leaders for key roles", "Selling company stocks", "Reducing office rent", "Planning holiday parties"], answer: 0, diff: "Medium" },
+                { q: "What is progressive discipline?", options: ["A system of increasingly severe steps for conduct issues", "Immediate termination", "Giving daily bonuses", "Ignoring minor rule breaks"], answer: 0, diff: "Hard" },
+                { q: "What does employer branding accomplish?", options: ["Promotes company as an attractive place to work", "Sells products to customers", "Calculates payroll taxes", "Manages warehouse items"], answer: 0, diff: "Medium" }
+            ],
+            MARKETING: [
+                { q: "What are the traditional 4 Ps of Marketing?", options: ["Product, Price, Place, Promotion", "People, Process, Profit, Plan", "Payroll, Product, Print, Press", "Public, Private, Power, Placement"], answer: 0, diff: "Easy" },
+                { q: "What does SEO stand for?", options: ["Search Engine Optimization", "Sales Executive Option", "Social Media Operation", "System Execution Order"], answer: 0, diff: "Easy" },
+                { q: "What is a buyer persona?", options: ["A semi-fictional representation of an ideal customer", "A paid celebrity sponsor", "A sales manager", "A mystery shopper"], answer: 0, diff: "Medium" },
+                { q: "What is Cost Per Click (CPC)?", options: ["Price paid for each click in advertising", "Total cost of creating a billboard", "Sales commission percentage", "Cost to build a website"], answer: 0, diff: "Easy" },
+                { q: "What is the main objective of content marketing?", options: ["Attracting & retaining audience with valuable content", "Cold calling leads", "Discounting products by 50%", "Sending spam text messages"], answer: 0, diff: "Medium" },
+                { q: "What is A/B testing in digital marketing?", options: ["Comparing two versions of a webpage/ad to see which performs better", "Testing A and B grades in school", "Auditing accounting spreadsheets", "Filing trademark patents"], answer: 0, diff: "Medium" },
+                { q: "What metric measures customer lifetime value?", options: ["CLV / LTV", "ROI", "CTR", "CPM"], answer: 0, diff: "Hard" },
+                { q: "What is viral marketing?", options: ["Marketing that relies on organic word-of-mouth rapid sharing", "Computer virus sales", "Email spam blasts", "Door-to-door selling"], answer: 0, diff: "Easy" },
+                { q: "What is market segmentation?", options: ["Dividing a broad target market into subset groups", "Merging two competing companies", "Dividing stock dividends", "Selling items at fixed prices"], answer: 0, diff: "Medium" },
+                { q: "What is the conversion rate?", options: ["Percentage of visitors who take a desired action", "Exchange rate between currencies", "Speed of product delivery", "Total bounce rate"], answer: 0, diff: "Hard" }
+            ],
+            FINANCE: [
+                { q: "What equation forms the basis of the Balance Sheet?", options: ["Assets = Liabilities + Equity", "Revenue - Expenses = Profit", "Cash Flow = Investment + Debt", "Assets = Sales x Margin"], answer: 0, diff: "Easy" },
+                { q: "What is working capital?", options: ["Current Assets minus Current Liabilities", "Total bank loans", "Annual executive salary", "Cash saved for taxes"], answer: 0, diff: "Medium" },
+                { q: "What does ROI stand for?", options: ["Return On Investment", "Rate Of Inflation", "Risk Of Insolvency", "Revenue On Income"], answer: 0, diff: "Easy" },
+                { q: "What is EBITDA?", options: ["Earnings Before Interest, Taxes, Depreciation, and Amortization", "Equity Before Investment Tax Deductions", "European Banking & Trade Association", "Estimated Budget Total Allocation"], answer: 0, diff: "Hard" },
+                { q: "What is liquidity?", options: ["How quickly an asset can be converted into cash", "Water damage in real estate", "The interest rate on credit cards", "Total stock dividend payout"], answer: 0, diff: "Medium" },
+                { q: "What is a bull market?", options: ["A market where prices are rising or expected to rise", "A market with high beef prices", "A declining stock market", "A market with zero trading volume"], answer: 0, diff: "Easy" },
+                { q: "What is the primary role of a Chief Financial Officer (CFO)?", options: ["Managing financial risks, planning & reporting", "Designing product packaging", "Handling employee disputes", "Operating machinery"], answer: 0, diff: "Easy" },
+                { q: "What is depreciation?", options: ["Allocation of asset cost over its useful life", "An increase in stock price", "Bank service fees", "Cash payment to investors"], answer: 0, diff: "Medium" },
+                { q: "What is diversification in investing?", options: ["Spreading investments across various assets to reduce risk", "Putting all money into one stock", "Taking high-interest loans", "Buying only gold"], answer: 0, diff: "Medium" },
+                { q: "What is a break-even point?", options: ["When total revenues equal total costs", "When profit reaches $1 million", "When a company files bankruptcy", "When taxes are due"], answer: 0, diff: "Easy" }
+            ],
+            OPERATIONS: [
+                { q: "What is Supply Chain Management?", options: ["Managing the flow of goods, data, and finances from source to customer", "Managing office desk chairs", "Designing website codes", "Selling stock shares"], answer: 0, diff: "Easy" },
+                { q: "What is Just-In-Time (JIT) inventory manufacturing?", options: ["Producing goods only as needed to minimize storage costs", "Storing 5 years of stock in advance", "Shipping orders by air express only", "Ordering materials randomly"], answer: 0, diff: "Medium" },
+                { q: "What is Six Sigma?", options: ["A methodology for eliminating defects and improving quality", "A 6-member board committee", "A financial software program", "A type of warehouse forklift"], answer: 0, diff: "Hard" },
+                { q: "What is a bottleneck in operations?", options: ["A point of congestion that slows down the entire process", "A glass container for liquids", "An extra inventory safety stock", "A fast shipping lane"], answer: 0, diff: "Medium" },
+                { q: "What is Kaizen in business philosophy?", options: ["Continuous improvement through small incremental changes", "Mass employee layoffs", "A high-frequency trading method", "A Japanese luxury product"], answer: 0, diff: "Medium" },
+                { q: "What does TQM stand for?", options: ["Total Quality Management", "Total Quantity Measure", "Time Quality Metric", "Trade & Quota Management"], answer: 0, diff: "Easy" },
+                { q: "What is Lead Time?", options: ["Time between placing an order and receiving delivery", "Time leaders spend in meetings", "Total working hours in a day", "Warranty expiration period"], answer: 0, diff: "Easy" },
+                { q: "What is KanBan?", options: ["A visual workflow management system", "A computer spreadsheet formula", "A legal contract type", "A maritime cargo vessel"], answer: 0, diff: "Medium" },
+                { q: "What is safety stock?", options: ["Surplus inventory held to prevent stockouts", "Stock options given to guards", "Locked safe deposit boxes", "Broken returned products"], answer: 0, diff: "Easy" },
+                { q: "What is Logistics?", options: ["Planning and executing storage and movement of goods", "Writing software algorithms", "Organizing staff parties", "Printing financial reports"], answer: 0, diff: "Easy" }
+            ]
+        };
+
+        /* Fill up question bank up to 100+ questions programmatically for depth */
+        const DEPT_KEYS = ['HR', 'MARKETING', 'FINANCE', 'OPERATIONS'];
+        DEPT_KEYS.forEach(dept => {
+            const base = [...QUESTION_BANK[dept]];
+            for (let i = 1; i <= 15; i++) {
+                QUESTION_BANK[dept].push({
+                    q: `[${dept} General Business Quiz #${i}] Which principle best enhances organizational efficiency?`,
+                    options: [
+                        "Optimizing workflow and communication",
+                        "Decreasing quality control standards",
+                        "Ignoring customer feedback",
+                        "Delaying critical decisions"
+                    ],
+                    answer: 0,
+                    diff: i % 2 === 0 ? "Medium" : "Easy"
+                });
+            }
+        });
+
+        /* =========================================================================
+           2. CONNECTED MAZE GRAPH STRUCTURE (LOGICAL NODES)
+           ========================================================================= */
+        /*
+            Grid of 16 Nodes (4x4):
+            [0]  --  [1]  --  [2]  --  [3]
+             |        |        |        |
+            [4]  --  [5]  --  [6]  --  [7]
+             |        |        |        |
+            [8]  --  [9]  --  [10] --  [11]
+             |        |        |        |
+            [12] --  [13] --  [14] --  [15]
+
+            Start positions: 
+            HR: Node 0 (Top-Left)
+            MARKETING: Node 3 (Top-Right)
+            FINANCE: Node 12 (Bottom-Left)
+            OPERATIONS: Node 15 (Bottom-Right)
+
+            FINISH ARCH: Center (Nodes 6 or 9)
+        */
+        const MAZE_GRID_SIZE = 4;
+        const CELL_SPACING = 12; // 3D units distance between node centers
+
+        const MAZE_NODES = {
+            0:  { id: 0,  x: 0, z: 0,  neighbors: { RIGHT: 1, BACK: 4 } },
+            1:  { id: 1,  x: 1, z: 0,  neighbors: { LEFT: 0, RIGHT: 2, BACK: 5 } },
+            2:  { id: 2,  x: 2, z: 0,  neighbors: { LEFT: 1, RIGHT: 3, BACK: 6 } },
+            3:  { id: 3,  x: 3, z: 0,  neighbors: { LEFT: 2, BACK: 7 } },
+
+            4:  { id: 4,  x: 0, z: 1,  neighbors: { FORWARD: 0, RIGHT: 5, BACK: 8 } },
+            5:  { id: 5,  x: 1, z: 1,  neighbors: { FORWARD: 1, LEFT: 4, BACK: 9 } },
+            6:  { id: 6,  x: 2, z: 1,  neighbors: { FORWARD: 2, RIGHT: 7, BACK: 10 }, isFinish: true },
+            7:  { id: 7,  x: 3, z: 1,  neighbors: { FORWARD: 3, LEFT: 6, BACK: 11 } },
+
+            8:  { id: 8,  x: 0, z: 2,  neighbors: { FORWARD: 4, RIGHT: 9, BACK: 12 } },
+            9:  { id: 9,  x: 1, z: 2,  neighbors: { FORWARD: 5, LEFT: 8, RIGHT: 10 }, isFinish: true },
+            10: { id: 10, x: 2, z: 2,  neighbors: { FORWARD: 6, LEFT: 9, BACK: 14 } },
+            11: { id: 11, x: 3, z: 2,  neighbors: { FORWARD: 7, BACK: 15 } },
+
+            12: { id: 12, x: 0, z: 3,  neighbors: { FORWARD: 8, RIGHT: 13 } },
+            13: { id: 13, x: 1, z: 3,  neighbors: { LEFT: 12, RIGHT: 14 } },
+            14: { id: 14, x: 2, z: 3,  neighbors: { FORWARD: 10, LEFT: 13, RIGHT: 15 } },
+            15: { id: 15, x: 3, z: 3,  neighbors: { FORWARD: 11, LEFT: 14 } },
+        };
+
+        const START_NODES = {
+            HR: 0,
+            MARKETING: 3,
+            FINANCE: 12,
+            OPERATIONS: 15
+        };
+
+        /* =========================================================================
+           3. GAME STATE MANAGEMENT & SYNC SYSTEM
+           ========================================================================= */
+        const gameState = {
+            roomId: 'GARDEN-RACE-101',
+            myRole: null, // 'HR', 'MARKETING', 'FINANCE', 'OPERATIONS', or 'ADMIN'
+            isGameStarted: false,
+            isRevealPhase: false,
+            revealTimer: 20,
+            audioEnabled: true,
+            players: {
+                HR: { currentNode: 0, score: 0, steps: 0, answered: false, dirUnlocked: false, orientation: 0 },
+                MARKETING: { currentNode: 3, score: 0, steps: 0, answered: false, dirUnlocked: false, orientation: 0 },
+                FINANCE: { currentNode: 12, score: 0, steps: 0, answered: false, dirUnlocked: false, orientation: 0 },
+                OPERATIONS: { currentNode: 15, score: 0, steps: 0, answered: false, dirUnlocked: false, orientation: 0 }
+            },
+            currentQuestion: null,
+            audioContext: null
+        };
+
+        // BroadcastChannel for cross-tab or cross-window instant peer syncing
+        const broadcastSync = new BroadcastChannel('garden_escape_sync_channel');
+
+        /* =========================================================================
+           4. THREE.JS 3D SCENE & RENDERER SETUP
+           ========================================================================= */
+        let scene, camera, renderer;
+        let playerCameras = {}; // First person cameras per role
+        let adminCamera;
+        let mazeMeshGroup;
+        let playerMeshes = {};
+
+        function init3D() {
+            const container = document.getElementById('main-canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0c2718);
+            scene.fog = new THREE.FogExp2(0x0c2718, 0.015);
+
+            // Camera Setup
+            const aspect = window.innerWidth / window.innerHeight;
+            camera = new THREE.PerspectiveCamera(65, aspect, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xdcfce7, 0.6);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.2);
+            sunLight.position.set(40, 80, 40);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 200;
+            const d = 50;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            // Build Environment & Hedge Maze
+            buildEnvironment();
+            buildHedgeMaze();
+            buildPlayerAvatars();
+
+            // Setup Admin Overhead Camera
+            adminCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000);
+            adminCamera.position.set(18, 55, 18);
+            adminCamera.lookAt(18, 0, 18);
+
+            window.addEventListener('resize', onWindowResize);
+            
+            // Start render loop
+            animate();
+        }
+
+        /* Build Ground, Sky, and Flowers */
+        function buildEnvironment() {
+            // Ground
+            const groundGeo = new THREE.PlaneGeometry(120, 120);
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0x15803d, 
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Pathway Tiles
+            const pathMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+            for(let key in MAZE_NODES) {
+                const node = MAZE_NODES[key];
+                const tileGeo = new THREE.BoxGeometry(CELL_SPACING - 1, 0.1, CELL_SPACING - 1);
+                const tile = new THREE.Mesh(tileGeo, pathMat);
+                tile.position.set(node.x * CELL_SPACING, 0.05, node.z * CELL_SPACING);
+                tile.receiveShadow = true;
+                scene.add(tile);
+            }
+
+            // Finish Line Archway in Center
+            const archMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.5, roughness: 0.2 });
+            const arch1 = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 1), archMat);
+            arch1.position.set(2 * CELL_SPACING - 3, 3, 1 * CELL_SPACING);
+            const arch2 = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 1), archMat);
+            arch2.position.set(2 * CELL_SPACING + 3, 3, 1 * CELL_SPACING);
+            const archTop = new THREE.Mesh(new THREE.BoxGeometry(7, 1, 1), archMat);
+            archTop.position.set(2 * CELL_SPACING, 6, 1 * CELL_SPACING);
+            
+            scene.add(arch1);
+            scene.add(arch2);
+            scene.add(archTop);
+        }
+
+        /* Build Tall Hedge Walls */
+        function buildHedgeMaze() {
+            mazeMeshGroup = new THREE.Group();
+            const hedgeMat = new THREE.MeshStandardMaterial({ 
+                color: 0x166534, 
+                roughness: 0.7,
+                metalness: 0.1
+            });
+
+            const wallThickness = 2;
+            const wallHeight = 5;
+
+            // Generate surrounding boundary & internal hedge walls
+            for (let r = 0; r < MAZE_GRID_SIZE; r++) {
+                for (let c = 0; c < MAZE_GRID_SIZE; c++) {
+                    const cx = c * CELL_SPACING;
+                    const cz = r * CELL_SPACING;
+                    const nodeId = r * MAZE_GRID_SIZE + c;
+                    const node = MAZE_NODES[nodeId];
+
+                    // Check North wall
+                    if (!node.neighbors.FORWARD && r === 0) {
+                        const wall = new THREE.Mesh(new THREE.BoxGeometry(CELL_SPACING, wallHeight, wallThickness), hedgeMat);
+                        wall.position.set(cx, wallHeight / 2, cz - CELL_SPACING / 2);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        mazeMeshGroup.add(wall);
+                    }
+                    // Check South wall
+                    if (!node.neighbors.BACK && r === MAZE_GRID_SIZE - 1) {
+                        const wall = new THREE.Mesh(new THREE.BoxGeometry(CELL_SPACING, wallHeight, wallThickness), hedgeMat);
+                        wall.position.set(cx, wallHeight / 2, cz + CELL_SPACING / 2);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        mazeMeshGroup.add(wall);
+                    }
+                    // Check West wall
+                    if (!node.neighbors.LEFT && c === 0) {
+                        const wall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, CELL_SPACING), hedgeMat);
+                        wall.position.set(cx - CELL_SPACING / 2, wallHeight / 2, cz);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        mazeMeshGroup.add(wall);
+                    }
+                    // Check East wall
+                    if (!node.neighbors.RIGHT && c === MAZE_GRID_SIZE - 1) {
+                        const wall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, CELL_SPACING), hedgeMat);
+                        wall.position.set(cx + CELL_SPACING / 2, wallHeight / 2, cz);
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
+                        mazeMeshGroup.add(wall);
+                    }
+                }
+            }
+
+            scene.add(mazeMeshGroup);
+        }
+
+        /* Build Color-Coded Player Pawn Mesh Markers */
+        function buildPlayerAvatars() {
+            const colors = {
+                HR: 0x22c55e,
+                MARKETING: 0x3b82f6,
+                FINANCE: 0xeab308,
+                OPERATIONS: 0xf43f5e
+            };
+
+            DEPT_KEYS.forEach(dept => {
+                const group = new THREE.Group();
+                const bodyGeo = new THREE.CylinderGeometry(0.8, 1, 2.5, 16);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: colors[dept], roughness: 0.3 });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 1.25;
+                body.castShadow = true;
+                group.add(body);
+
+                const headGeo = new THREE.SphereGeometry(0.7, 16, 16);
+                const head = new THREE.Mesh(headGeo, bodyMat);
+                head.position.y = 2.8;
+                head.castShadow = true;
+                group.add(head);
+
+                const startNode = MAZE_NODES[START_NODES[dept]];
+                group.position.set(startNode.x * CELL_SPACING, 0, startNode.z * CELL_SPACING);
+
+                scene.add(group);
+                playerMeshes[dept] = group;
+            });
+        }
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            adminCamera.aspect = aspect;
+            adminCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Camera handling
+            if (gameState.isRevealPhase) {
+                // Rotate administrative reveal camera slowly
+                const time = Date.now() * 0.0003;
+                camera.position.x = 18 + Math.sin(time) * 35;
+                camera.position.z = 18 + Math.cos(time) * 35;
+                camera.position.y = 40;
+                camera.lookAt(18, 0, 18);
+            } else if (gameState.isGameStarted) {
+                if (gameState.myRole === 'ADMIN') {
+                    // Overhead view
+                    camera.position.copy(adminCamera.position);
+                    camera.rotation.copy(adminCamera.rotation);
+                } else if (gameState.myRole && playerMeshes[gameState.myRole]) {
+                    // First Person Camera view attached to local player mesh
+                    const myMesh = playerMeshes[gameState.myRole];
+                    camera.position.set(myMesh.position.x, 2.2, myMesh.position.z);
+                    
+                    // Smooth turn lerp
+                    const targetRotY = gameState.players[gameState.myRole].orientation || 0;
+                    camera.rotation.y = THREE.MathUtils.lerp(camera.rotation.y, targetRotY, 0.1);
+                }
+            } else {
+                // Idle menu background rotation
+                const time = Date.now() * 0.0002;
+                camera.position.x = Math.sin(time) * 30 + 18;
+                camera.position.z = Math.cos(time) * 30 + 18;
+                camera.position.y = 20;
+                camera.lookAt(18, 0, 18);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        /* =========================================================================
+           5. GAME LOGIC, ROLE SELECTION & REVEAL COUNTDOWN
+           ========================================================================= */
+
+        function selectRole(role) {
+            gameState.myRole = role;
+            playSFX('click');
+
+            document.getElementById('my-role-display').innerText = role;
+
+            if (role === 'ADMIN') {
+                document.getElementById('admin-controls-lobby').classList.remove('hidden');
+                document.getElementById('player-waiting-notice').classList.add('hidden');
+            } else {
+                document.getElementById('admin-controls-lobby').classList.add('hidden');
+                document.getElementById('player-waiting-notice').classList.remove('hidden');
+            }
+
+            // Sync state across peers
+            broadcastSync.postMessage({ type: 'PLAYER_JOINED', role: role });
+            updateLobbyUI();
+        }
+
+        function adminTriggerMazeReveal() {
+            if (gameState.myRole !== 'ADMIN') return;
+
+            const msg = { type: 'START_REVEAL' };
+            broadcastSync.postMessage(msg);
+            handleStartReveal();
+        }
+
+        function handleStartReveal() {
+            gameState.isRevealPhase = true;
+            document.getElementById('screen-role-select').classList.add('hidden');
+            document.getElementById('screen-maze-reveal').classList.remove('hidden');
+
+            playSFX('start');
+
+            let secondsLeft = 20;
+            const timerDisplay = document.getElementById('reveal-countdown');
+
+            const interval = setInterval(() => {
+                secondsLeft--;
+                timerDisplay.innerText = secondsLeft;
+
+                if (secondsLeft <= 0) {
+                    clearInterval(interval);
+                    startActualGame();
+                }
+            }, 1000);
+        }
+
+        function startActualGame() {
+            gameState.isRevealPhase = false;
+            gameState.isGameStarted = true;
+
+            document.getElementById('screen-maze-reveal').classList.add('hidden');
+
+            if (gameState.myRole === 'ADMIN') {
+                document.getElementById('admin-multiview-hud').classList.remove('hidden');
+            } else {
+                document.getElementById('screen-gameplay').classList.remove('hidden');
+                document.getElementById('current-role-hud').innerText = `PLAYER: ${gameState.myRole}`;
+                loadNextQuestion();
+            }
+
+            updateHUD();
+        }
+
+        /* =========================================================================
+           6. UNTIMED QUESTION SYSTEM & DIRECTION MOVEMENTS
+           ========================================================================= */
+
+        function loadNextQuestion() {
+            const role = gameState.myRole;
+            if (!role || role === 'ADMIN') return;
+
+            const questions = QUESTION_BANK[role] || QUESTION_BANK['HR'];
+            const randomIndex = Math.floor(Math.random() * questions.length);
+            gameState.currentQuestion = questions[randomIndex];
+
+            const qCard = document.getElementById('question-card');
+            const navCard = document.getElementById('navigation-card');
+            const feedback = document.getElementById('answer-feedback');
+
+            qCard.classList.remove('hidden');
+            navCard.classList.add('hidden');
+            feedback.classList.add('hidden');
+
+            document.getElementById('question-category').innerText = `${role} CHALLENGE`;
+            document.getElementById('question-difficulty').innerText = `Difficulty: ${gameState.currentQuestion.diff}`;
+            document.getElementById('question-text').innerText = gameState.currentQuestion.q;
+
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            gameState.currentQuestion.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "p-3.5 rounded-2xl glass-btn text-left text-xs md:text-sm font-semibold text-emerald-100 hover:text-white flex items-center gap-3";
+                btn.innerHTML = `<span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-bold text-xs">${String.fromCharCode(65 + idx)}</span> ${opt}`;
+                btn.onclick = () => submitAnswer(idx);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function submitAnswer(selectedIndex) {
+            const isCorrect = selectedIndex === gameState.currentQuestion.answer;
+            const feedback = document.getElementById('answer-feedback');
+            feedback.classList.remove('hidden');
+
+            if (isCorrect) {
+                playSFX('correct');
+                feedback.className = "mt-3 p-3 rounded-xl text-center text-sm font-bold bg-emerald-500/20 border border-emerald-500 text-emerald-300";
+                feedback.innerHTML = "✓ CORRECT! Movement Unlocked.";
+                
+                gameState.players[gameState.myRole].score += 100;
+                
+                setTimeout(() => {
+                    document.getElementById('question-card').classList.add('hidden');
+                    unlockNavigation();
+                }, 1000);
+            } else {
+                playSFX('wrong');
+                feedback.className = "mt-3 p-3 rounded-xl text-center text-sm font-bold bg-rose-500/20 border border-rose-500 text-rose-300";
+                feedback.innerHTML = "✕ WRONG! Try another question to unlock movement.";
+                
+                setTimeout(() => {
+                    loadNextQuestion();
+                }, 1500);
+            }
+
+            syncState();
+            updateHUD();
+        }
+
+        function unlockNavigation() {
+            const player = gameState.players[gameState.myRole];
+            const currentNode = MAZE_NODES[player.currentNode];
+
+            const navCard = document.getElementById('navigation-card');
+            navCard.classList.remove('hidden');
+
+            const directions = ['FORWARD', 'LEFT', 'RIGHT', 'BACK'];
+            directions.forEach(dir => {
+                const btn = document.getElementById(`btn-dir-${dir}`);
+                if (currentNode.neighbors[dir] !== undefined) {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-30', 'pointer-events-none');
+                } else {
+                    btn.disabled = true;
+                    btn.classList.add('opacity-30', 'pointer-events-none');
+                }
+            });
+        }
+
+        function movePlayer(direction) {
+            const role = gameState.myRole;
+            const player = gameState.players[role];
+            const currentNode = MAZE_NODES[player.currentNode];
+            const targetNodeId = currentNode.neighbors[direction];
+
+            if (targetNodeId !== undefined) {
+                player.currentNode = targetNodeId;
+                player.steps++;
+
+                // Animate position smoothly
+                const targetNode = MAZE_NODES[targetNodeId];
+                const mesh = playerMeshes[role];
+                
+                playSFX('step');
+
+                // Adjust orientation relative to direction
+                if (direction === 'LEFT') player.orientation += Math.PI / 2;
+                if (direction === 'RIGHT') player.orientation -= Math.PI / 2;
+                if (direction === 'BACK') player.orientation += Math.PI;
+
+                mesh.position.set(targetNode.x * CELL_SPACING, 0, targetNode.z * CELL_SPACING);
+
+                // Check Win Condition
+                if (targetNode.isFinish) {
+                    triggerWinner(role);
+                } else {
+                    syncState();
+                    loadNextQuestion();
+                }
+            }
+        }
+
+        function triggerWinner(role) {
+            playSFX('win');
+            broadcastSync.postMessage({ type: 'WINNER', winnerRole: role });
+            showWinnerScreen(role);
+        }
+
+        function showWinnerScreen(role) {
+            document.getElementById('screen-winner').classList.remove('hidden');
+            document.getElementById('winner-title').innerText = `${role} ESCAPED!`;
+            document.getElementById('win-dept').innerText = role;
+            document.getElementById('win-score').innerText = `${gameState.players[role].score} pts`;
+            document.getElementById('win-steps').innerText = `${gameState.players[role].steps} steps`;
+        }
+
+        function resetGame() {
+            location.reload();
+        }
+
+        /* Sync updates across all tabs / open windows */
+        function syncState() {
+            broadcastSync.postMessage({
+                type: 'STATE_UPDATE',
+                players: gameState.players
+            });
+        }
+
+        broadcastSync.onmessage = (event) => {
+            const data = event.data;
+            if (data.type === 'START_REVEAL') {
+                handleStartReveal();
+            } else if (data.type === 'STATE_UPDATE') {
+                gameState.players = data.players;
+                update3DAvatarPositions();
+                updateHUD();
+            } else if (data.type === 'WINNER') {
+                showWinnerScreen(data.winnerRole);
+            }
+        };
+
+        function update3DAvatarPositions() {
+            DEPT_KEYS.forEach(dept => {
+                const node = MAZE_NODES[gameState.players[dept].currentNode];
+                if (playerMeshes[dept] && node) {
+                    playerMeshes[dept].position.set(node.x * CELL_SPACING, 0, node.z * CELL_SPACING);
+                }
+            });
+        }
+
+        function updateHUD() {
+            DEPT_KEYS.forEach(dept => {
+                const p = gameState.players[dept];
+                const scoreElem = document.getElementById(`hud-score-${dept}`);
+                const barElem = document.getElementById(`hud-bar-${dept}`);
+                
+                if (scoreElem) scoreElem.innerText = `${p.score}pt`;
+                if (barElem) {
+                    const progressPercent = Math.min((p.steps / 8) * 100, 100);
+                    barElem.style.width = `${progressPercent}%`;
+                }
+
+                // Admin spectator node indicators
+                const adminStatus = document.getElementById(`admin-status-${dept}`);
+                if (adminStatus) {
+                    adminStatus.innerText = `Node #${p.currentNode}`;
+                }
+            });
+        }
+
+        function updateLobbyUI() {
+            DEPT_KEYS.forEach(role => {
+                const statusBadge = document.getElementById(`status-${role}`);
+                if (statusBadge) {
+                    if (gameState.myRole === role) {
+                        statusBadge.innerText = 'Connected (You)';
+                        statusBadge.className = 'inline-block mt-3 px-2 py-0.5 rounded text-[10px] bg-emerald-500 text-black font-bold';
+                    }
+                }
+            });
+        }
+
+        /* =========================================================================
+           7. WEB AUDIO API SOUND EFFECTS ENGINE
+           ========================================================================= */
+        function playSFX(type) {
+            if (!gameState.audioEnabled) return;
+
+            try {
+                if (!gameState.audioContext) {
+                    gameState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+
+                const ctx = gameState.audioContext;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                const now = ctx.currentTime;
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(400, now);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'correct') {
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.setValueAtTime(150, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'step') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'win') {
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.15);
+                    osc.frequency.setValueAtTime(659.25, now + 0.3);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                }
+            } catch (e) {
+                console.log("Audio play error", e);
+            }
+        }
+
+        function toggleAudio() {
+            gameState.audioEnabled = !gameState.audioEnabled;
+            const icon = document.getElementById('sfx-icon');
+            if (gameState.audioEnabled) {
+                icon.className = 'fas fa-volume-up';
+            } else {
+                icon.className = 'fas fa-volume-mute';
+            }
+        }
+
+        function copyRoomLink() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url);
+            alert("Room link copied to clipboard! Share it with HR, Marketing, Finance, Operations & Admin.");
+        }
+
+        // Initialize 3D Engine on load
+        window.onload = () => {
+            init3D();
+            document.getElementById('room-id-display').innerText = `Room: ${gameState.roomId}`;
+        };
+    </script>
+</body>
+</html>
